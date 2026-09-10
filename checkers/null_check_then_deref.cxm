@@ -55,9 +55,15 @@ function nullTest(c : astnode, sym : string) : int ->
     };
 
 // The key of the variable a dereference expression dereferences, or null.
+// `p[i]` on a POINTER is spelled as a dereference of `p + i` (only a true
+// array keeps subscriptReference), so a dereference of `p +/- i` counts as
+// a dereference of p.
 function derefTarget(d : astnode) : string? ->
     switch (d) {
-      | pointerDereference as p -> varKey(stripCasts(p.pointerExpression))
+      | pointerDereference as p ->
+            if stripCasts(p.pointerExpression) matches binaryOperator as b && (b.operator == `+` || b.operator == `-`)
+            then (varKey(stripCasts(b.lhsExpression)) ?? varKey(stripCasts(b.rhsExpression)))
+            else varKey(stripCasts(p.pointerExpression)) endif
       | memberReference as m ->
             if stripCasts(m.objectExpression) matches pointerDereference as pd
             then varKey(stripCasts(pd.pointerExpression))
@@ -81,19 +87,22 @@ function escapes(s : astnode) : bool ->
                                       || x matches breakStatement || x matches continueStatement, s);
 
 // Is dereference d of sym guarded by some test of sym around it?
+// (each exists parenthesized: an unparenthesized `exists .. where P || exists ..`
+// nests the second inside the first's where, and an empty first collection
+// makes the whole disjunction false)
 function guarded(d : astnode, sym : string, fn : astnode) : bool ->
-       exists s in allMatchingCodeIn(ifStatement, fn)
-           where nullTest(s.conditionExpression, sym) != 0 && inside(d, s)
+       (exists s in allMatchingCodeIn(ifStatement, fn)
+            where nullTest(s.conditionExpression, sym) != 0 && inside(d, s))
     // `if (!p) return;` guards everything that follows it (order unknown, so
     // it is taken to guard every dereference outside itself)
-    || exists g in allMatchingCodeIn(ifStatement, fn)
-           where nullTest(g.conditionExpression, sym) < 0 && escapes(g.trueStatement) && !inside(d, g)
-    || exists t in allMatchingCodeIn(conditionalOperator, fn)
-           where nullTest(t.conditionExpression, sym) != 0 && inside(d, t)
-    || exists a in allMatchingCodeIn(binaryOperator { .operator == `&&` }, fn)
-           where nullTest(a.lhsExpression, sym) > 0 && inside(d, a.rhsExpression)
-    || exists o in allMatchingCodeIn(binaryOperator { .operator == `||` }, fn)
-           where nullTest(o.lhsExpression, sym) < 0 && inside(d, o.rhsExpression);
+    || (exists g in allMatchingCodeIn(ifStatement, fn)
+            where nullTest(g.conditionExpression, sym) < 0 && escapes(g.trueStatement) && !inside(d, g))
+    || (exists t in allMatchingCodeIn(conditionalOperator, fn)
+            where nullTest(t.conditionExpression, sym) != 0 && inside(d, t))
+    || (exists a in allMatchingCodeIn(binaryOperator { .operator == `&&` }, fn)
+            where nullTest(a.lhsExpression, sym) > 0 && inside(d, a.rhsExpression))
+    || (exists o in allMatchingCodeIn(binaryOperator { .operator == `||` }, fn)
+            where nullTest(o.lhsExpression, sym) < 0 && inside(d, o.rhsExpression));
 
 checker {
     name = "PATHOUT_CANDIDATE_NULL_CHECK_THEN_DEREF";

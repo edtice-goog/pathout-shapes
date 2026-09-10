@@ -1,0 +1,34 @@
+// Path-INSENSITIVE shape for SIZEOF_MISMATCH / BAD_SIZEOF: sizeof applied to
+// a pointer variable, used as the size argument of a memory routine or an
+// allocation (memset(p, 0, sizeof p); malloc(sizeof p)). No tracking at all;
+// the shape itself is the defect nearly every time.
+include `C/C++`;
+
+function sizeIndex(name : string) : int ->
+    if name == "malloc" || name == "alloca" then 0
+    elsif name == "realloc" || name == "bzero" then 1
+    elsif name == "memset" || name == "memcpy" || name == "memmove" || name == "memcmp"
+          || name == "strncpy" || name == "strncat" || name == "snprintf" || name == "fread" || name == "fwrite" then 2
+    else -1 endif;
+
+// sizeofOperator exposes only .children (empty for sizeof(type)); the
+// expression form has the operand as its child.
+function hasSizeofPointerVar(e : expression) : bool ->
+    exists z in allMatchingCodeIn(sizeofOperator, e)
+        where exists ch in z.children
+              where ch matches expression as op && stripCasts(op) matches variableReference as v
+                    && v.type matches pointerType;
+
+checker {
+    name = "PATHOUT_CANDIDATE_SIZEOF_POINTER_AS_SIZE";
+    reports = for c in globalset allFunctionCode
+        where c matches functionCall as call
+           && call.calledFunction.identifier matches NonNull as nm
+           && let si = sizeIndex(nm) in
+              si >= 0
+              && call.argumentList[si] matches NonNull as sz
+              && hasSizeofPointerVar(sz)
+        : { events = [ { description = "Candidate: " + nm.formattedAsCode + " is given sizeof of a pointer variable as its size."
+                                       + " Path-insensitive; almost always the defect itself.";
+                         location = c.location; } ]; };
+};

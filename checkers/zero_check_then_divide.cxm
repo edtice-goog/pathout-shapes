@@ -50,15 +50,18 @@ function escapes(s : astnode) : bool ->
     contains(function(x : astnode) -> x matches returnStatement || x matches gotoStatement
                                       || x matches breakStatement || x matches continueStatement, s);
 
+// (each exists parenthesized: an unparenthesized `exists .. where P || exists ..`
+// nests the second inside the first's where, and an empty first collection
+// makes the whole disjunction false)
 function guarded(d : astnode, sym : string, fn : astnode) : bool ->
-       exists s in allMatchingCodeIn(ifStatement, fn) where zeroTest(s.conditionExpression, sym) != 0 && inside(d, s)
-    || exists g in allMatchingCodeIn(ifStatement, fn)
-           where zeroTest(g.conditionExpression, sym) < 0 && escapes(g.trueStatement) && !inside(d, g)
-    || exists t in allMatchingCodeIn(conditionalOperator, fn) where zeroTest(t.conditionExpression, sym) != 0 && inside(d, t)
-    || exists a in allMatchingCodeIn(binaryOperator { .operator == `&&` }, fn)
-           where zeroTest(a.lhsExpression, sym) > 0 && inside(d, a.rhsExpression)
-    || exists o in allMatchingCodeIn(binaryOperator { .operator == `||` }, fn)
-           where zeroTest(o.lhsExpression, sym) < 0 && inside(d, o.rhsExpression);
+       (exists s in allMatchingCodeIn(ifStatement, fn) where zeroTest(s.conditionExpression, sym) != 0 && inside(d, s))
+    || (exists g in allMatchingCodeIn(ifStatement, fn)
+            where zeroTest(g.conditionExpression, sym) < 0 && escapes(g.trueStatement) && !inside(d, g))
+    || (exists t in allMatchingCodeIn(conditionalOperator, fn) where zeroTest(t.conditionExpression, sym) != 0 && inside(d, t))
+    || (exists a in allMatchingCodeIn(binaryOperator { .operator == `&&` }, fn)
+            where zeroTest(a.lhsExpression, sym) > 0 && inside(d, a.rhsExpression))
+    || (exists o in allMatchingCodeIn(binaryOperator { .operator == `||` }, fn)
+            where zeroTest(o.lhsExpression, sym) < 0 && inside(d, o.rhsExpression));
 
 checker {
     name = "PATHOUT_CANDIDATE_ZERO_CHECK_THEN_DIVIDE";
