@@ -1,0 +1,5 @@
+# Coverity intermediate directories and run output
+idir*/
+out/
+__pycache__/
+*.pyc
