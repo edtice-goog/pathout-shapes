@@ -59,3 +59,30 @@ int shape_cast(void *p) {
   }
   return *(int *)r;               /* HIT */
 }
+
+/* 6. CONTROL: a while / for condition guards its body like an if does */
+int shape_loop_guard(void *ctx, unsigned n) {
+  struct rec *r = lookup(ctx, 0);
+  int v = 0;
+  unsigned i;
+  if (r == 0)
+    unknown(0);
+  while (r != 0) {
+    v += r->other;                 /* guarded by the loop condition */
+    r = lookup(ctx, ++n);
+  }
+  for (i = 0; r && i < n; i++)
+    v += r->other;                 /* guarded by the loop condition */
+  return v;
+}
+
+/* 7. CONTROL: the test wraps an assignment -> still a test of r */
+int shape_assign_in_test(void *ctx, unsigned n) {
+  struct rec *r;
+  int v = 0;
+  if ((r = lookup(ctx, n)) != 0)
+    v = r->other;
+  if ((r = lookup(ctx, n + 1)))
+    v += r->other;
+  return v;
+}

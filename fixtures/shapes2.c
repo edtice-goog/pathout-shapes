@@ -42,6 +42,22 @@ int nr_not_dereferenced(void) {
   sinkp(home);
   return 0;
 }
+int nr_tested_in_loop_assignment(const char *s) {
+  char *p;
+  int n = 0;
+  while ((p = strchr(s, ':')) != 0) {   /* the test wraps the assignment */
+    n += p[1];
+    s = p + 1;
+  }
+  return n;
+}
+int nr_tested_in_if_assignment(const char *s) {
+  char *p;
+  int n = 0;
+  if ((p = strchr(s, '/')))
+    n += p[1];
+  return n;
+}
 
 /* ---- nonliteral_format_string ---- */
 void fmt_shape(const char *msg) {
@@ -132,6 +148,9 @@ void sz_array(void) {
 }
 void sz_deref(int *p) {
   memset(p, 0, sizeof(*p));
+}
+void sz_pointer_value(void **slot, void *data) {
+  memcpy(slot, &data, sizeof(data));      /* copies the pointer itself: not this shape */
 }
 
 /* ---- source_length_into_fixed_buffer ---- */

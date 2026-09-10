@@ -6,8 +6,11 @@ include `C/C++`;
 function varKey(r : astnode) : string? ->
     if r matches variableReference as v then (v.mangledName ?? v.identifier) else null endif;
 
+// a reference to sym, or an assignment to it (`if ((n = f()) != 0)`)
 function refsVar(e : expression, sym : string) : bool ->
-    stripCasts(e) matches variableReference as r && varKey(r) == sym;
+       (stripCasts(e) matches variableReference as r && varKey(r) == sym)
+    || (stripCasts(e) matches assignmentOperator as a
+        && stripCasts(a.targetExpression) matches variableReference as t && varKey(t) == sym);
 
 function isZeroLiteral(e : expression) : bool ->
     stripCasts(e) matches intLiteral { .value == 0 } || stripCasts(e) matches nullPointerLiteral;
@@ -58,6 +61,9 @@ function guarded(d : astnode, sym : string, fn : astnode) : bool ->
     || (exists g in allMatchingCodeIn(ifStatement, fn)
             where zeroTest(g.conditionExpression, sym) < 0 && escapes(g.trueStatement) && !inside(d, g))
     || (exists t in allMatchingCodeIn(conditionalOperator, fn) where zeroTest(t.conditionExpression, sym) != 0 && inside(d, t))
+    || (exists w in allMatchingCodeIn(whileLoop, fn) where zeroTest(w.conditionExpression, sym) != 0 && inside(d, w))
+    || (exists f in allMatchingCodeIn(forLoopSimple, fn)
+            where zeroTest(f.conditionExpression, sym) != 0 && inside(d, f))
     || (exists a in allMatchingCodeIn(binaryOperator { .operator == `&&` }, fn)
             where zeroTest(a.lhsExpression, sym) > 0 && inside(d, a.rhsExpression))
     || (exists o in allMatchingCodeIn(binaryOperator { .operator == `||` }, fn)

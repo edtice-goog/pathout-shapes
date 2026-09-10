@@ -12,8 +12,12 @@ include `C/C++`;
 function varKey(r : astnode) : string? ->
     if r matches variableReference as v then (v.mangledName ?? v.identifier) else null endif;
 
+// After casts, is e a reference to sym -- or an assignment to it, so that
+// `while ((p = f()) != NULL)` and `if ((p = f()))` count as tests of p.
 function refsVar(e : expression, sym : string) : bool ->
-    stripCasts(e) matches variableReference as r && varKey(r) == sym;
+       (stripCasts(e) matches variableReference as r && varKey(r) == sym)
+    || (stripCasts(e) matches assignmentOperator as a
+        && stripCasts(a.targetExpression) matches variableReference as t && varKey(t) == sym);
 
 function isNullLiteral(e : expression) : bool ->
     stripCasts(e) matches nullPointerLiteral || stripCasts(e) matches intLiteral { .value == 0 };
