@@ -29,8 +29,9 @@ cd "$SRC"
 rm -rf "$IDIR"; mkdir -p "$IDIR"
 case "$RECIPE" in
   autoconf)
-    [ -x ./configure ] || autoreconf -fi > "$WS/logs/$NAME.autoreconf.log" 2>&1
-    ./configure > "$WS/logs/$NAME.configure.log" 2>&1 || { echo "[$NAME] configure failed"; exit 1; }
+    if [ -x ./auto/configure ]; then CONFIGURE=./auto/configure; else CONFIGURE=./configure; fi   # nginx keeps it under auto/
+    [ -x "$CONFIGURE" ] || autoreconf -fi > "$WS/logs/$NAME.autoreconf.log" 2>&1
+    $CONFIGURE ${CONFIGURE_ARGS:-} > "$WS/logs/$NAME.configure.log" 2>&1 || { echo "[$NAME] configure failed"; exit 1; }
     BUILD="make -j8"
     ;;
   cmake)
