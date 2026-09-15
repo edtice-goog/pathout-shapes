@@ -49,9 +49,19 @@ function root(n : astnode) : astnode ->
 function inside(d : astnode, s : astnode) : bool ->
     contains(function(x : astnode) -> x == d, s);
 
+// a call that never returns ends the path like a return (exit, abort, an
+// expanded assert's __assert_fail)
+function isNoReturn(name : string) : bool ->
+    name == "exit" || name == "_exit" || name == "_Exit" || name == "abort" || name == "quick_exit"
+    || name == "__assert_fail" || name == "__assert_rtn" || name == "__assert" || name == "_assert"
+    || name == "__builtin_trap" || name == "__builtin_unreachable" || name == "longjmp" || name == "siglongjmp"
+    || name == "err" || name == "errx" || name == "verr" || name == "verrx";
+
 function escapes(s : astnode) : bool ->
     contains(function(x : astnode) -> x matches returnStatement || x matches gotoStatement
-                                      || x matches breakStatement || x matches continueStatement, s);
+                                      || x matches breakStatement || x matches continueStatement
+                                      || (x matches functionCall as c
+                                          && c.calledFunction.identifier matches NonNull as nm && isNoReturn(nm)), s);
 
 // (each exists parenthesized: an unparenthesized `exists .. where P || exists ..`
 // nests the second inside the first's where, and an empty first collection

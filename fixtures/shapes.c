@@ -32,6 +32,12 @@ int div_positive(int total, int n) {
   }
   return 0;
 }
+extern void abort(void);
+int div_abort_guard(int total, int n) {
+  if (n == 0)
+    abort();                     /* a call that never returns is an exit guard */
+  return total / n;
+}
 
 /* ---- double_free ---- */
 void free_shape(int flag) {

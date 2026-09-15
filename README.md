@@ -12,7 +12,7 @@ confirmation step live in the
 
 | checker | shape | stands in for | relevant components for the filter |
 |---|---|---|---|
-| `null_check_then_deref` | a pointer null-tested somewhere in the function and dereferenced where no test of it guards | FORWARD_NULL, REVERSE_INULL, NULL_RETURNS | `FORWARD_NULL`, `NULL_RETURNS` (`REVERSE_INULL` as a second pass) |
+| `null_check_then_deref` | a pointer null-tested somewhere in the function and dereferenced where no test of it guards (an `if`, a ternary, a loop condition, `&&`/`\|\|`, or an exit guard whose body returns, jumps, or calls a function that never returns: `exit`, `abort`, an expanded `assert`) | FORWARD_NULL, REVERSE_INULL, NULL_RETURNS | `FORWARD_NULL`, `NULL_RETURNS` (`REVERSE_INULL` as a second pass) |
 | `zero_check_then_divide` | an integer tested against zero and used as a divisor where no test guards | DIVIDE_BY_ZERO | `DIVIDE_BY_ZERO` |
 | `double_free` | the same variable passed to a releasing call at two sites in one function | USE_AFTER_FREE (double free) | `USE_AFTER_FREE` |
 | `unbounded_copy_into_fixed_buffer` | a fixed-size local array receives `strcpy`/`strcat`/`sprintf`/`gets` | STRING_OVERFLOW, OVERRUN | `STRING_OVERFLOW`, `OVERRUN` |

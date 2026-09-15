@@ -76,6 +76,24 @@ int shape_loop_guard(void *ctx, unsigned n) {
   return v;
 }
 
+/* 8. CONTROL: a call that never returns is an exit guard, like a return.
+ *    `if (!p) exit(1);` and an expanded assert (`if (!(p != 0)) __assert_fail(...)`)
+ *    both guard everything after them. (57 of zstd's 60 survivors were these.) */
+extern void exit(int);
+extern void __assert_fail(const char *, const char *, unsigned, const char *);
+int shape_exit_guard(void *ctx, unsigned n) {
+  struct rec *r = lookup(ctx, n);
+  if (r == 0)
+    exit(1);
+  return r->other;
+}
+int shape_assert_guard(void *ctx, unsigned n) {
+  struct rec *r = lookup(ctx, n);
+  if (!(r != 0))
+    __assert_fail("r != 0", "f.c", 1, "shape_assert_guard");
+  return r->other;
+}
+
 /* 7. CONTROL: the test wraps an assignment -> still a test of r */
 int shape_assign_in_test(void *ctx, unsigned n) {
   struct rec *r;
