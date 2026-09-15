@@ -93,6 +93,13 @@ int shape_assert_guard(void *ctx, unsigned n) {
     __assert_fail("r != 0", "f.c", 1, "shape_assert_guard");
   return r->other;
 }
+int shape_assert_glibc(void *ctx, unsigned n) {
+  struct rec *r = lookup(ctx, n);
+  if (r != 0);                      /* glibc's assert after expansion: */
+  else                              /*   if (p != NULL); else __assert_fail(..) */
+    __assert_fail("r != 0", "f.c", 3, "shape_assert_glibc");
+  return r->other;
+}
 int shape_assert_ternary(void *ctx, unsigned n) {
   struct rec *r = lookup(ctx, n);
   if (n > 7)

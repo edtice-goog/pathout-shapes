@@ -112,6 +112,12 @@ function guarded(d : astnode, sym : string, fn : astnode) : bool ->
     // it is taken to guard every dereference outside itself)
     || (exists g in allMatchingCodeIn(ifStatement, fn)
             where nullTest(g.conditionExpression, sym) < 0 && escapes(g.trueStatement) && !inside(d, g))
+    // ... and its mirror image, `if (p) ; else exit(1);` -- which is what glibc's
+    // assert(p != NULL) becomes after expansion (a statement expression holding
+    // `if (p != NULL); else __assert_fail(..)`); 17 of zstd's survivors
+    || (exists g2 in allMatchingCodeIn(ifStatement, fn)
+            where nullTest(g2.conditionExpression, sym) > 0 && g2.falseStatement matches NonNull as fs
+                  && escapes(fs) && !inside(d, g2))
     || (exists t in allMatchingCodeIn(conditionalOperator, fn)
             where nullTest(t.conditionExpression, sym) != 0 && inside(d, t))
     // glibc's assert(p) is a ternary, `(p) ? (void)0 : __assert_fail(..)`:

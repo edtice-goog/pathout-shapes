@@ -70,6 +70,10 @@ function guarded(d : astnode, sym : string, fn : astnode) : bool ->
        (exists s in allMatchingCodeIn(ifStatement, fn) where zeroTest(s.conditionExpression, sym) != 0 && inside(d, s))
     || (exists g in allMatchingCodeIn(ifStatement, fn)
             where zeroTest(g.conditionExpression, sym) < 0 && escapes(g.trueStatement) && !inside(d, g))
+    // and `if (n != 0) ; else abort();`, which is what an expanded assert(n != 0) looks like
+    || (exists g2 in allMatchingCodeIn(ifStatement, fn)
+            where zeroTest(g2.conditionExpression, sym) > 0 && g2.falseStatement matches NonNull as fs
+                  && escapes(fs) && !inside(d, g2))
     || (exists t in allMatchingCodeIn(conditionalOperator, fn) where zeroTest(t.conditionExpression, sym) != 0 && inside(d, t))
     // assert(n != 0) is a ternary whose false arm never returns
     || (exists x in allMatchingCodeIn(conditionalOperator, fn)
