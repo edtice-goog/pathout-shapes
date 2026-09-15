@@ -114,6 +114,12 @@ function guarded(d : astnode, sym : string, fn : astnode) : bool ->
             where nullTest(g.conditionExpression, sym) < 0 && escapes(g.trueStatement) && !inside(d, g))
     || (exists t in allMatchingCodeIn(conditionalOperator, fn)
             where nullTest(t.conditionExpression, sym) != 0 && inside(d, t))
+    // glibc's assert(p) is a ternary, `(p) ? (void)0 : __assert_fail(..)`:
+    // an exit guard in expression form, guarding everything outside it
+    || (exists x in allMatchingCodeIn(conditionalOperator, fn)
+            where ((nullTest(x.conditionExpression, sym) > 0 && escapes(x.falseExpression))
+                   || (nullTest(x.conditionExpression, sym) < 0 && escapes(x.trueExpression)))
+                  && !inside(d, x))
     // a while / for whose condition tests p guards its body (a do-while
     // does not: the body runs before the first test)
     || (exists w in allMatchingCodeIn(whileLoop, fn)

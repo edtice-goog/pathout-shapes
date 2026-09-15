@@ -93,6 +93,13 @@ int shape_assert_guard(void *ctx, unsigned n) {
     __assert_fail("r != 0", "f.c", 1, "shape_assert_guard");
   return r->other;
 }
+int shape_assert_ternary(void *ctx, unsigned n) {
+  struct rec *r = lookup(ctx, n);
+  if (n > 7)
+    unknown(0);
+  ((r != 0) ? (void)0 : __assert_fail("r != 0", "f.c", 2, "shape_assert_ternary"));   /* glibc's assert */
+  return r->other;
+}
 
 /* 7. CONTROL: the test wraps an assignment -> still a test of r */
 int shape_assign_in_test(void *ctx, unsigned n) {

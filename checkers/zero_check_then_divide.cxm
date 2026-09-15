@@ -71,6 +71,11 @@ function guarded(d : astnode, sym : string, fn : astnode) : bool ->
     || (exists g in allMatchingCodeIn(ifStatement, fn)
             where zeroTest(g.conditionExpression, sym) < 0 && escapes(g.trueStatement) && !inside(d, g))
     || (exists t in allMatchingCodeIn(conditionalOperator, fn) where zeroTest(t.conditionExpression, sym) != 0 && inside(d, t))
+    // assert(n != 0) is a ternary whose false arm never returns
+    || (exists x in allMatchingCodeIn(conditionalOperator, fn)
+            where ((zeroTest(x.conditionExpression, sym) > 0 && escapes(x.falseExpression))
+                   || (zeroTest(x.conditionExpression, sym) < 0 && escapes(x.trueExpression)))
+                  && !inside(d, x))
     || (exists w in allMatchingCodeIn(whileLoop, fn) where zeroTest(w.conditionExpression, sym) != 0 && inside(d, w))
     || (exists f in allMatchingCodeIn(forLoopSimple, fn)
             where zeroTest(f.conditionExpression, sym) != 0 && inside(d, f))
