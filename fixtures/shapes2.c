@@ -93,7 +93,7 @@ void bf_heap(void) {
   free(p);
 }
 
-/* ---- overflow_before_alloc ---- */
+/* ---- unbounded_arithmetic_into_sink ---- */
 void *ovf_shape(size_t n) {
   return malloc(n * sizeof(int));         /* HIT: n never compared */
 }
@@ -108,8 +108,64 @@ void *ovf_bounded(size_t n) {
 void *ovf_constant(void) {
   return malloc(16 * sizeof(int));
 }
-void *ovf_no_product(size_t n) {
-  return malloc(n);
+void *ovf_no_arith(size_t n) {
+  return malloc(n);                       /* no arithmetic: not this shape */
+}
+struct cell { int a; int *b; };
+void *ovf_through_variable(int fd) {
+  int y;
+  read(fd, &y, 4);
+  unsigned long long size = y * sizeof(struct cell);   /* (the reference writes `int size`; that would also be a narrowing cast) */
+  if (size != 0)
+    return malloc(size);                  /* HIT: the checker reference's own example; != 0 is not a bound */
+  return 0;
+}
+void ovf_memcpy_length(char *dst, const char *src, size_t n, size_t hdr) {
+  memcpy(dst, src, n + hdr);              /* HIT: a sum of two uncompared variables */
+}
+int ovf_index(int *table, int i, int stride) {
+  return table[i * stride];               /* HIT: an array index */
+}
+void ovf_compound(char *dst, const char *src, size_t n, size_t extra) {
+  size_t len = n;
+  len += extra;
+  memcpy(dst, src, len);                  /* HIT: len grows by an uncompared operand and is never compared */
+}
+void ovf_compound_bounded(char *dst, const char *src, size_t n, size_t extra) {
+  size_t len = n;
+  len += extra;
+  if (len > 64)
+    return;
+  memcpy(dst, src, len);
+}
+int ovf_return_only(int a, int b) {
+  return a * b;                           /* a return is not a sink here, on purpose */
+}
+
+/* ---- narrowing_cast_of_arithmetic ---- */
+short nc_shape_explicit(int a, int b) {
+  return (short)(a * b);                  /* HIT: 32-bit product into 16 bits */
+}
+int nc_shape_implicit(unsigned long long n, unsigned long long hdr) {
+  int total = n + hdr;                    /* HIT: 64-bit sum into 32 bits, implicit (size_t is 32 bits on the default emit target) */
+  return total;
+}
+unsigned char nc_shape_shift(unsigned x) {
+  return (unsigned char)(x << 3);         /* HIT */
+}
+int nc_bounded(unsigned long long n, unsigned long long hdr) {
+  if (n > 1000 || hdr > 1000)
+    return -1;
+  return (int)(n + hdr);
+}
+int nc_same_width(unsigned x, unsigned y) {
+  return (int)(x - y);                    /* signedness only: not reported, on purpose */
+}
+long nc_widening(int a, int b) {
+  return (long)(a * b);                   /* wider target: not this shape (the product wraps before the cast, which is OVERFLOW_BEFORE_WIDEN) */
+}
+int nc_no_arith(size_t n) {
+  return (int)n;                          /* no arithmetic: not this shape */
 }
 
 /* ---- unchecked_array_index ---- */
