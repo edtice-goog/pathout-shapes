@@ -1,14 +1,36 @@
 # pathout-shapes
 
-Path-**insensitive** CodeXM checkers, one per defect *shape*, for hunting the
-siblings of a defect that escaped Coverity because its function exceeded
-the path limit (PATHOUT). They are deliberately noisy: they reason about
-structure only, and are meant to be run over a whole intermediate directory
-and then filtered to the PATHOUT functions where the corresponding
-path-sensitive checker was cut off. The procedure, the filter and the
+Path-**insensitive** CodeXM checkers, one per defect *shape*, for examining
+the functions on which Coverity applied its per-function path bound
+(`PATHOUT`). They extend the analyzer rather than second-guess it: each one
+is run over a whole intermediate directory in seconds, and its hits are kept
+only inside the functions where the corresponding path-sensitive checker
+reached the bound, because everywhere else that checker finished and its
+verdict stands. The procedure, the filter and the execution-based
 confirmation step live in the
-[`coverity-pathout` skill](https://github.com/edtice-goog/CoveritySkills/tree/master/coverity-pathout)
-(`references/escape-hunt.md`); this repository is only the checkers.
+[`coverity-pathout` skill](https://github.com/edtice-goog/CoveritySkills/tree/master/coverity-pathout);
+this repository is only the checkers.
+
+## Why the bound, and why look past it now
+
+Static analyzers come in two families. Sound tools exhaust the state space
+and prove their results; they are excellent on small programs and do not
+scale. Coverity's family bounds the work it will spend on any one function
+and reaches detection rates close to the sound tools on codebases those
+tools cannot analyze at all. That bound is the engineering decision that
+made whole-program analysis of large systems practical, and the `PATHOUT`
+line in the log is the analyzer recording, per function and per checker,
+exactly where it applied it. Nothing is hidden and nothing is skipped
+silently.
+
+For twenty years the residue behind the bound was an acceptable trade,
+because finding it and chaining it into an exploit took scarce expert
+attention. Frontier models have removed that scarcity. The bound is still
+the right design; what changed is that the corners it leaves are now worth
+lighting, and the analyzer's own artefacts -- the log, the intermediate
+directory, the derived models -- make lighting them cheap. These checkers
+are the first step of that: a higher detection rate at early-stage cost,
+instead of a late-stage tool pulled forward into a budget it does not fit.
 
 | checker | shape | stands in for | relevant components for the filter |
 |---|---|---|---|
@@ -28,7 +50,8 @@ confirmation step live in the
 
 ## Running
 
-When a defect has escaped, run the one checker for its shape:
+When a later stage (a fuzzer, a pen test, a customer) has found a defect
+whose function pathed out, run the one checker for its shape:
 
 ```bash
 cov-analyze --dir <idir-copy> --disable-default --codexm checkers/<shape>.cxm
